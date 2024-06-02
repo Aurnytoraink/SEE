@@ -1,0 +1,115 @@
+import sys
+from adc import ADC
+import numpy as np
+from scipy.signal import find_peaks
+
+from PyQt5.QtWidgets import QMainWindow, QSizePolicy, QWidget, QLabel, QPushButton, QHBoxLayout, QVBoxLayout
+from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSlot
+from PyQt5.QtChart import QChart, QChartView
+
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super(MainWindow, self).__init__()
+
+        self.setObjectName("MainWindow")
+        self.resize(256, 256)
+        sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
+        self.setSizePolicy(sizePolicy)
+        self.setMinimumSize(QSize(256, 256))
+        self.setMaximumSize(QSize(256, 256))
+        self.centralwidget = QWidget(self)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        self.centralwidget.setSizePolicy(sizePolicy)
+        self.centralwidget.setAutoFillBackground(False)
+        
+        self.centralwidget.setObjectName("centralwidget")
+        self.horizontalLayout = QHBoxLayout(self.centralwidget)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+
+        self.bpm_label = QLabel(self.centralwidget)
+        self.bpm_label.setStyleSheet("font: 700 18pt \"Cantarell\";")
+        self.bpm_label.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.bpm_label.setObjectName("bpm_label")
+        self.verticalLayout_2.addWidget(self.bpm_label)
+
+        self.oxyge_label = QLabel(self.centralwidget)
+        self.oxyge_label.setStyleSheet("font: 700 18pt \"Cantarell\";")
+        self.oxyge_label.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.oxyge_label.setObjectName("oxyge_label")
+        self.verticalLayout_2.addWidget(self.oxyge_label)
+
+        self.pushButton = QPushButton(self.centralwidget)
+        self.pushButton.setObjectName("pushButton")
+        self.verticalLayout_2.addWidget(self.pushButton)
+        self.horizontalLayout.addLayout(self.verticalLayout_2)
+
+        self.setCentralWidget(self.centralwidget)
+
+        #QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+        self.setWindowTitle("BPMmeter")
+        self.bpm_label.setText("XXX bpm")
+        self.oxyge_label.setText("XXX %")
+        self.pushButton.setText("Afficher le graph")
+        
+        self.adc = ADC(0)
+        
+        self.update_value_timer = QTimer()
+        self.update_value_timer.setInterval(100)
+        self.update_value_timer.timeout.connect(self.acquerir)
+        self.update_value_timer.start()
+        
+        self.acquisition_time = QTimer()
+        self.acquisition_time.setInterval(5000)
+        self.acquisition_time.timeout.connect(self.update_BPM_value)
+        self.acquisition_time.start()
+        
+        self.value = np.array([])
+        
+    @pyqtSlot()
+    def acquerir(self):
+        value = self.adc.convert_values()
+        self.value = np.append(self.value,[value])
+        #print("acquisitiooooooooooooooooooooon")
+    
+    @pyqtSlot()
+    def update_BPM_value(self):
+        """En gros ici, dès que le timer run out, on procède au calcul
+        """
+        print("j'update")
+        if self.value.size != 0:
+            data = self.value.copy()
+            
+            self.update_value_timer.stop()
+            
+            print(data)
+            
+            data = data - np.average(data)
+            data = np.correlate(data,data,mode='full')
+            data = data[data.size // 2:]
+            #Find peaks
+            peaks, _ = find_peaks(data, height=0.2, distance=1)
+            
+            times = np.linspace(0, data.size*0.1, data.size)
+                       
+            pulse = times[peaks][1:len(peaks)] - times[peaks][0:len(peaks)-1]
+            
+            print(peaks,times,pulse)
+            
+            bpm = 60/np.average(pulse)
+            if bpm != None:
+                txt = str(int(bpm))
+            
+            self.bpm_label.setText("😊" + txt + "bpm")
+            
+            self.value = np.array([])
+            
+            self.update_value_timer.start()
