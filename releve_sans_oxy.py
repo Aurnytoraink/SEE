@@ -90,17 +90,16 @@ def oxygene(channel, temps_acquisition):
     #return times, 110-25*ratio
     return times, IR, RED
 
-# times, IR, RED = oxygene(0,5)
-# amp = (RED/np.average(RED))/(IR/np.average(IR))
-# amp = np.asarray(amp)*100
-# print(np.average(amp),"%")
+times, IR, RED = oxygene(0,5)
+amp = (RED/np.average(RED))/(IR/np.average(IR))
+amp = np.asarray(amp)*100
+print(np.average(amp),"%")
 # plt.plot(times,amp)
 # plt.title("Oxymétrie")
 # plt.show()
 
 
 # Lancer acquisition
-GPIO.output(18, GPIO.LOW)
 times, amp = acquerir(0,5)
 
 # Afficher dans un graph
