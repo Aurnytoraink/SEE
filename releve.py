@@ -2,7 +2,15 @@ import spidev
 import time
 import matplotlib.pyplot as plt
 import pandas as pd
-from time import sleep
+from time import time
+import pandas as pd
+import RPi.GPIO as GPIO
+
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(18, GPIO.OUT)
+
+GPIO.output(18, GPIO.HIGH)
 
 bus=0
 device=0
@@ -23,27 +31,26 @@ def convert_values(value):
     return value*5/4095
 
 
-def acquerir(temps_acquisition):
-    nb_sample = int(temps_acquisition * 1e4)
-    i = 0
+def acquerir(channel, temps_acquisition):
     times, amp = [], []
+    t_conv_start = time()
 
     # Acquisition des n sample
-    for i in range(nb_sample):
-        value = read_ADC(0)
+    while time() - t_conv_start < temps_acquisition:
+        value = read_ADC(channel)
         value = convert_values(value)
+        t_conv_end = time()
         
-        times.append(i*1e-4) #100 ksps
+        times.append(t_conv_end - t_conv_start) #100 ksps
         amp.append(value)
-        
-        i+=1
-        
-        sleep(1e-4)
+    
+        #sleep(1e-4)
     
     return times, amp
 
+
 # Afficher dans un graph
-times, amp = acquerir(0.010)
+times, amp = acquerir(0,5)
 
 plt.plot(times,amp)
 plt.xlabel("Temps (s)")
